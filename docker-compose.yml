@@ -1,9 +1,8 @@
+
 services:
   mongo:
     image: mongo:8
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:27017:27017"
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -19,10 +18,38 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3010:3000"
     environment:
       PORT: "3000"
       MONGODB_URI: mongodb://mongo:27017/univalle_shop
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  catalog-service:
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      PORT: "3001"
+      MONGO_URI: mongodb://mongo:27017/univalleshop_catalog
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3002"
+    environment:
+      PORT: "3002"
+      MONGO_URI: mongodb://mongo:27017/univalleshop_orders
     depends_on:
       mongo:
         condition: service_healthy
