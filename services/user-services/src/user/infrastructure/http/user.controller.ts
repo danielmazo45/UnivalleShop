@@ -4,8 +4,10 @@ import {
   ConflictException,
   Controller,
   Post,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserUseCase } from '../../application/use-cases/create-user.use-case.js';
+import { LoginUserUseCase } from '../../application/use-cases/login-user.use-case.js';
 
 interface PublicUser {
   id?: string;
@@ -16,7 +18,26 @@ interface PublicUser {
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly createUserUseCase: CreateUserUseCase) {}
+  constructor(
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly loginUserUseCase: LoginUserUseCase,
+  ) {}
+
+  @Post('login')
+  async login(@Body() body: unknown): Promise<PublicUser> {
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      throw new BadRequestException('Debes enviar un objeto JSON');
+    }
+    const payload = body as Record<string, unknown>;
+    const email = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : '';
+    const password = typeof payload.password === 'string' ? payload.password : '';
+    if (!email || !password) {
+      throw new BadRequestException('Correo y contraseña son obligatorios');
+    }
+    const user = await this.loginUserUseCase.execute(email, password);
+    if (!user) throw new UnauthorizedException('Correo o contraseña incorrectos');
+    return { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt };
+  }
 
   @Post()
   async create(@Body() body: unknown): Promise<PublicUser> {
@@ -40,14 +61,10 @@ export class UserController {
 
     try {
       const user = await this.createUserUseCase.execute({ name, email, password });
-      // La contraseña ni su hash deben aparecer en la respuesta HTTP.
       return { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt };
     } catch (error: unknown) {
       if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 11000
+        typeof error === 'object' && error !== null && 'code' in error && error.code === 11000
       ) {
         throw new ConflictException('Este correo ya está registrado');
       }
