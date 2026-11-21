@@ -55,4 +55,4 @@ npm run lint        # oxlint
 
 ## Repositorio
 
-https://github.com/LUISVTP/Univalle_Shop
+https://github.com/danielmazo45/UnivalleShop.git
